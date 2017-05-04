@@ -5,43 +5,30 @@
         2017.05.01.
 """
 
-import re
-import tensorflow as tf
+import numpy as np
 
 
-def get_conv_shape(name):
-    spec = re.split(':|, |->', name)
-    kernel_size = int(spec[5])
-    stride = int(spec[7])
-    input_fm = int(spec[9])
-    output_fm = int(spec[10])
-    conv_shape = [kernel_size, kernel_size, input_fm, output_fm]
-    return conv_shape, stride
+# convert predictions to keys
+def prediction_2_keys(predict):
+    retval = np.zeros(predict.shape, dtype=np.float32)
+    retval[predict > 0.5] = 1
+    return retval
 
 
-def weight_variable(shape, stddev=0.02, name=None):
-    # print(shape)
-    initial = tf.truncated_normal(shape, stddev=stddev)
-    if name is None:
-        return tf.Variable(initial)
-    else:
-        return tf.get_variable(name, initializer=initial)
+def calculate_loss(tp, tn, fp, fn, evaluator):
+    if evaluator == "precision":
+        return (tp + fp) / tp
 
+    elif evaluator == "recall":
+        return (tp + fn) / tp
 
-def bias_variable(shape, name=None):
-    initial = tf.constant(0.0, shape=shape)
-    if name is None:
-        return tf.Variable(initial)
-    else:
-        return tf.get_variable(name, initializer=initial)
+    elif evaluator == "specificity":
+        return (tn + fp) / tn
 
+    elif evaluator == "accuracy":
+        return (tp + tn + fp + fn) / (tp + tn)
 
-def conv2d(x, W, bias, stride=1):
-    conv = tf.nn.conv2d(x, W, strides=[1, stride, stride, 1], padding="SAME")
-    return tf.nn.bias_add(conv, bias)
-
-
-def deconv(x, W, b, output_shape, stride=1):
-    conv = tf.nn.conv2d_transpose(x, W, output_shape, strides=[1, stride, stride, 1], padding="SAME")
-    return tf.nn.bias_add(conv, b)
-
+    elif evaluator == "miu":
+        return 2.0 / ((tp / (tp + fp + fn)) + (tn / (tn + fp + fn)))
+    elif evaluator == "fiu":
+        return (tp + tn + fp + fn) / ((tp + fp) * (tp / (tp + fp + fn)) + (fn + tn) * (tn / tn + fp + fn))
