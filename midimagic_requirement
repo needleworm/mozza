@@ -1,0 +1,48 @@
+Midimagic
+
+Class midi_magic:
+
+	initiation 과정에서 (directory, batch_size, window_size) 세 개의 입력을 받아들임.
+
+	directory 내에 있는 미디파일을 순차적으로 읽어오되, 한 번에 모두 읽어오면 안 됨. next_batch에서 end of file call이 들어오면 그 떄 다음 파일을 읽음.
+
+
+Reader = Midimagic.midimagic(“directory”, 5, 5) 이런 식으로 초기화 해서 사용할 계획.
+
+필요 메소드
+
+Global variable
+	batch_offset = 0
+
+next_batch(batch_size, zeropadd=True):
+	batch_size만큼의 배치를 리턴해 준다.
+	seed =  np array with size (batch_size, window_size, 88)
+        ground_truth =  np array with size (batch_size, window_size, 88)
+
+	초기 호출시 :
+		0번부터  window_size * 2 개의 토큰을 읽어옴
+			읽어올 때, 눌린 건반은 1, 아닌 건반은 0으로 표시되는 (88, 1) 사이즈의 벡터로 읽어옴.
+                 0번부터 window_size-1 인덱스 (총 window_size개)를 seed[0, :, :]에 담음
+		window_size 번 부터 window_size*2 -1 인덱스 (총 window_size개)를 ground_truth[0, :, :]에 담음
+		batch_offset += 1
+
+		위 과정을 batch_size번 반복한다.
+	이후 호출시
+		batch_offset번 인덱스부터 batch_offset + window_size*2개의 인덱스를 읽어와
+		앞 절반은 시드에 담고 뒷 절반은 그라운드 트루스에 담는다.
+
+	return seed, ground_truth
+
+next_batch 한 번 호출시
+	batch_offset이 batch_size만큼 증가함
+
+만약 batch_offset + window_size *2 번 인덱스가 없을 경우 (파일 끝에 다다라서)
+If zeropadd
+	시드와 그라운드 트루스를 만들기에 부족한 인덱스는 그냥 0으로 채우고 리턴. 다음 파일 읽어옴.
+Else:
+	지금 파일을 버리고, 다음 파일을 읽어와 batch_offset을 0으로 만들고, 처음부터 진행.
+
+
+
+중요
+리턴값은 np.array, dtype=np.float32
